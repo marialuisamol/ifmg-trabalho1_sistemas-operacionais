@@ -5,27 +5,29 @@
 #include <sys/wait.h>
 #include <string.h>
 
+#define READ 1
+#define WRITE 0
 
 #define CHUNK sizeof(char)
 
 void executa(char *comando) 
 {
     //SPLIT NO ESPAÇO
-    char *args[64];
-    char **prox = args;
+    char *arg[64];
+    int const args = *arg;
+    char **prox = arg;
 
     char *temp = strtok(comando, " ");
 
     while (temp != NULL)
     {
       *prox++ = temp;
-      //printf("%s,\n", temp); //argumentos
       temp = strtok(NULL, " ");
     }
     *prox = NULL;
     
     //EXECUTA
-    execvp(args[0], args);
+    execvp(arg[0], args);
 }
 
 char *getln()
@@ -92,114 +94,113 @@ void separa_pipe(char* comando)
   while (p)
   {
     //printf("%s\n", p);
-    cria_fork(p);
+    int link_a[2], status_a, status_b;
+    pipe(link_a);
+
+    pid_t res_a = fork();
+    pid_t res_b = fork();
+
+
+    if (res_a == 0)
+    {
+      /* Filho A*/
+
+      dup2(link_a[WRITE], STDOUT_FILENO);
+      close(link_a[WRITE]);
+      close(link_a[READ]);
+
+      executa(p);
+    }
+    
+
     p = strtok(NULL, "|");
-      
+
+    if (res_b == 0)
+    {
+        /* Filho B*/
+
+      dup2(link_a[READ], STDIN_FILENO);      
+      close(link_a[READ]);
+      close(link_a[WRITE]);
+      executa(p);
+
+    }
+
+    else if (res_a > 0)
+    {
+      /* Pai */
+      waitpid(res_a, status_a, NULL);
+      waitpid(res_b, status_b, NULL);
+    }
+
+    else if (res_a < 0)
+    {
+      /* Falha em criar o filho A */
+    }
+
+    else if (res_b < 0)
+    {
+      /* Falha em criar o filho A */
+    } 
   }
-  
 }
 
-/*        REDIRECIONADORES        */
-void redirecionamento_maior(char* saida)
-{
-  pid_t res = fork();
+// /*        REDIRECIONADORES        */
+// void redirecionamento_maior(char* saida)
+// {
+//   pid_t res = fork();
 
-  if (res == 0)
-  {
-    /*Filho*/
-    FILE* fd = fopen(saida, "rw");
-    dup2(fd, STDOUT_FILENO);
-  }
-  else if(res > 0)
-  {
-    /*Pai*/
-    wait(NULL);
-  }
+//   if (res == 0)
+//   {
+//     /*Filho*/
+//     FILE* fd = fopen(saida, "rw");
+//     dup2(fd, STDOUT_FILENO);
+//   }
+//   else if(res > 0)
+//   {
+//     /*Pai*/
+//     wait(NULL);
+//   }
   
-}
+// }
 
-void redirecionamento_menor(char* entrada)
-{
-  pid_t res = fork();
+// void redirecionamento_menor(char* entrada)
+// {
+//   pid_t res = fork();
 
-  if (res == 0)
-  {
-    /*Filho*/
-    FILE* fd = fopen(entrada, "r");
-    dup2(fd, STDIN_FILENO);
-  }
-   else if(res > 0)
-  {
-    /*Pai*/
-    wait(NULL);
-  }
+//   if (res == 0)
+//   {
+//     /*Filho*/
+//     FILE* fd = fopen(entrada, "r");
+//     dup2(fd, STDIN_FILENO);
+//   }
+//    else if(res > 0)
+//   {
+//     /*Pai*/
+//     wait(NULL);
+//   }
   
   
-}
+// }
   
 
-/*              PIPES           */
-#define READ 1
-#define WRITE 0
 
-void pipe_simples(char *comando)//só um pipe
-{
-  int link_a[2], link_b[2];
-  pid_t res_a = fork();
-  pid_t res_b = fork();
-
-  pipe(link_a);
-
-  if (res_a == 0)
-  {
-    /* Filho A*/
-
-    dup2(link_a[WRITE], STDOUT_FILENO);
-    close(link_a[WRITE]);
-    close(link_a[READ]);
-
-    executa(comando);
-
-  }
-
-  
-  if (res_b == 0)
-  {
-    /* Filho B*/
-
-    dup2(link_b[READ], STDIN_FILENO);
-    close(link_b[WRITE]);
-    close(link_b[READ]);
-
-    executa(comando);
-
-
-  }
-
-  else if (res_a > 0 && res_b > 0)
-  {
-    /* Pai */
-    waitpid(res_a, NULL, NULL);
-    waitpid(res_b, NULL, NULL);
-  }
-  
-}
-
+/*
 void pipe_rec(char* comando)
 {
-  pid_t *filhos = malloc(2 * sizeof(pid_t));
-
-  filhos[0] = fork(); //filho a
-  filhos[1] = fork();//filho b
-
   int *link[2] = malloc(2 * sizeof(int));
 
   pipe(link[0]);
   pipe(link[1]);
 
+  pid_t *filhos = malloc(2 * sizeof(pid_t));
+
+  filhos[0] = fork(); //filho a
+  filhos[1] = fork();//filho b
+
   if (filhos[0] == 0)
   {
-    /* filho A echo abc | grep a*/
+    /* filho A echo abc | grep a
     dup2(link[0][WRITE], STDOUT_FILENO);
     close(link[0][WRITE]);
     close(link[0][READ]);
@@ -210,7 +211,7 @@ void pipe_rec(char* comando)
 
   if (filhos[1] == 0)
   {
-    /* filho B */
+    /* filho B 
     dup2(link[0][READ], STDIN_FILENO);//lendo de a
     close(link[0][WRITE]);
     close(link[0][READ]);
@@ -223,7 +224,5 @@ void pipe_rec(char* comando)
 
   }
 
-
-  
-
 }
+*/
