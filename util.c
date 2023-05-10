@@ -84,107 +84,136 @@ void cria_fork(char *comando)
    
 }
 
-void separa_pipe(char* comando)
+void separa_pipe(char* linha_comando)
 {
   char *p;
+  int i = 0;
 
-  p = strtok(comando, "|");
+  p = strtok(linha_comando, "|");
 
   
   while (p)
   {
-    //printf("%s\n", p);
-    int link_a[2], status_a, status_b;
-    pipe(link_a);
-
-    pid_t res_a = fork();
-    pid_t res_b = fork();
-
-
-    if (res_a == 0)
-    {
-      /* Filho A*/
-
-      dup2(link_a[WRITE], STDOUT_FILENO);
-      close(link_a[WRITE]);
-      close(link_a[READ]);
-
-      executa(p);
-    }
-    
-
+    p = malloc(sizeof(char)); //aloca posição de memoria pra fazer um vetor de comandos
+    i++;
     p = strtok(NULL, "|");
 
-    if (res_b == 0)
-    {
-        /* Filho B*/
-
-      dup2(link_a[READ], STDIN_FILENO);      
-      close(link_a[READ]);
-      close(link_a[WRITE]);
-      executa(p);
-
-    }
-
-    else if (res_a > 0)
-    {
-      /* Pai */
-      waitpid(res_a, status_a, NULL);
-      waitpid(res_b, status_b, NULL);
-    }
-
-    else if (res_a < 0)
-    {
-      /* Falha em criar o filho A */
-    }
-
-    else if (res_b < 0)
-    {
-      /* Falha em criar o filho A */
-    } 
   }
 }
 
-// /*        REDIRECIONADORES        */
-// void redirecionamento_maior(char* saida)
-// {
-//   pid_t res = fork();
+void separa_maior(char* linha_comando)
+{
+  char *p;
 
-//   if (res == 0)
-//   {
-//     /*Filho*/
-//     FILE* fd = fopen(saida, "rw");
-//     dup2(fd, STDOUT_FILENO);
-//   }
-//   else if(res > 0)
-//   {
-//     /*Pai*/
-//     wait(NULL);
-//   }
+  p = strtok(linha_comando, ">");
+
   
-// }
+  while (p)
+  {
+    p = malloc(sizeof(char)); //aloca posição de memoria pra fazer um vetor de comandos
+    p = strtok(NULL, ">");
 
-// void redirecionamento_menor(char* entrada)
-// {
-//   pid_t res = fork();
+  }
+}
 
-//   if (res == 0)
-//   {
-//     /*Filho*/
-//     FILE* fd = fopen(entrada, "r");
-//     dup2(fd, STDIN_FILENO);
-//   }
-//    else if(res > 0)
-//   {
-//     /*Pai*/
-//     wait(NULL);
-//   }
+void separa_menor(char* linha_comando)
+{
+  char *p;
+
+  p = strtok(linha_comando, "<");
+
+  
+  while (p)
+  {
+    p = malloc(sizeof(char)); //aloca posição de memoria pra fazer um vetor de comandos
+    p = strtok(NULL, "<");
+
+  }
+}
+
+/*        REDIRECIONADORES        */
+void redirecionamento_maior(char* saida)
+{
+  pid_t res = fork();
+
+  if (res == 0)
+  {
+    /*Filho*/
+    FILE* fd = fopen(saida, "rw");
+    dup2(fd, STDOUT_FILENO);
+  }
+  else if(res > 0)
+  {
+    /*Pai*/
+    wait(NULL);
+  }
+  
+}
+
+void redirecionamento_menor(char* entrada)
+{
+  pid_t res = fork();
+
+  if (res == 0)
+  {
+    /*Filho*/
+    FILE* fd = fopen(entrada, "r");
+    dup2(fd, STDIN_FILENO);
+  }
+   else if(res > 0)
+  {
+    /*Pai*/
+    wait(NULL);
+  }
   
   
-// }
+}
   
 
+/*              PIPES              */
 
+void pipe_simples(char* comandos)
+{
+  int pipe_a[2], status_a, status_b;
+  pipe(pipe_a);
+
+  pid_t res_a, res_b;
+
+  res_a = fork();
+  res_b = fork();
+
+  if(res_a == 0)
+  {
+    /*    Filho A     */
+    // comandos[0]
+    dup2(pipe_a[WRITE], STDOUT_FILENO);
+    close(pipe_a[WRITE]);
+    close(pipe_a[READ]);
+
+    executa(comandos[0]);
+  }
+
+  if (res_b == 0)
+  {
+    /* Filho B */
+    //comandos[1]
+    dup2(pipe_a[READ], STDIN_FILENO);
+    close(pipe_a[WRITE]);
+    close(pipe_a[READ]);
+
+    executa(comandos[1]);
+  }
+  
+  else if (res_a < 0)
+  {
+    /* Pai */
+
+    waitpid(res_a, status_a, NULL);
+    waitpid(res_b, status_b, NULL);
+  }
+  
+
+}
 /*
 void pipe_rec(char* comando)
 {
