@@ -13,8 +13,9 @@
 void executa(char *comando) 
 {
     //SPLIT NO ESPAÇO
-    char *arg[64];
-    char **prox = arg;
+    char *args[64];
+    const char arg = args;
+    char **prox = args;
 
     char *temp = strtok(comando, " ");
 
@@ -26,7 +27,8 @@ void executa(char *comando)
     *prox = NULL;
     
     //EXECUTA
-    execvp(arg[0], arg);
+    execvp(args[0], arg);
+    printf("\n%s\n", args);
 }
 
 char *getln()
@@ -190,90 +192,61 @@ void redirecionamento_menor(char* entrada)
 
 void pipe_simples(char** comandos)
 {
-  int pipe_a[2], status_a, status_b;
+  int pipe_a[2], status;
   pipe(pipe_a);
 
-  pid_t res_a, res_b;
+  pid_t res;
 
-  res_a = fork();
-  res_b = fork();
+  res = fork();
+  
 
-  if(res_a == 0)
+  if(res == 0)
   {
     /*    Filho A     */
     // comandos[0]
+    printf("\nFILHO A\n");
     dup2(pipe_a[WRITE], STDOUT_FILENO);
     
-    // dup2(pipe_a[READ], STDIN_FILENO);
-    
-    close(pipe_a[WRITE]);
     close(pipe_a[READ]);
+    close(pipe_a[WRITE]);
 
     executa(comandos[0]);
-  }
 
-  if (res_b == 0)
+    printf("\n$ Falha ao executar %s", comandos[0]);
+    exit(1);
+  }
+  
+  else if (res > 0)
   {
-    /* Filho B */
-    //comandos[1]
+    //PAI
+    res = fork();
+    if (res == 0)
+    {
+      /* Filho B */
+      //comandos[1]
+      printf("\nFILHO B\n");
+      dup2(pipe_a[READ], STDIN_FILENO);
+
+      close(pipe_a[WRITE]);
+      close(pipe_a[READ]);
+
+      executa(comandos[1]);
+      printf("\n$ Falha ao executar %s", comandos[1]);
+      exit(1);
+    }
+
+    else
+    {
+      close(pipe_a[READ]);
+      close(pipe_a[WRITE]);
+
+      waitpid(res, &status, 0);
+    }
     
-    dup2(pipe_a[WRITE], STDOUT_FILENO);
-    dup2(pipe_a[READ], STDIN_FILENO);
-
-    close(pipe_a[WRITE]);
-    close(pipe_a[READ]);
-
-    executa(comandos[1]);
   }
-  
-  else if (res_a < 0)
+  else
   {
-    /* Pai */
-
-    waitpid(res_a, status_a, NULL);
-    waitpid(res_b, status_b, NULL);
+    return;
   }
-  
-
 }
-/*
-void pipe_rec(char* comando)
-{
-  int *link[2] = malloc(2 * sizeof(int));
 
-  pipe(link[0]);
-  pipe(link[1]);
-
-  pid_t *filhos = malloc(2 * sizeof(pid_t));
-
-  filhos[0] = fork(); //filho a
-  filhos[1] = fork();//filho b
-
-  if (filhos[0] == 0)
-  {
-    /* filho A echo abc | grep a
-    dup2(link[0][WRITE], STDOUT_FILENO);
-    close(link[0][WRITE]);
-    close(link[0][READ]);
-
-    executa(comando);
-
-  }
-
-  if (filhos[1] == 0)
-  {
-    /* filho B 
-    dup2(link[0][READ], STDIN_FILENO);//lendo de a
-    close(link[0][WRITE]);
-    close(link[0][READ]);
-
-    dup2(link[1][WRITE], STDOUT_FILENO);//escrevendo em b
-    close(link[1][WRITE]);
-    close(link[1][READ]);
-
-    executa(comando);
-
-  }
-
-}
-*/
