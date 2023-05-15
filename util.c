@@ -14,7 +14,6 @@ void executa(char *comando)
 {
     //SPLIT NO ESPAÇO
     char *arg[64];
-    int const args = *arg;
     char **prox = arg;
 
     char *temp = strtok(comando, " ");
@@ -27,7 +26,7 @@ void executa(char *comando)
     *prox = NULL;
     
     //EXECUTA
-    execvp(arg[0], args);
+    execvp(arg[0], arg);
 }
 
 char *getln()
@@ -84,6 +83,23 @@ void cria_fork(char *comando)
    
 }
 
+int ultimo = 0, tamanho = 10;
+char** comandosAExecutar;
+
+void inicializar() {
+  comandosAExecutar = malloc(tamanho * sizeof(char*));
+}
+
+void inserir(char* comando) {
+  if (ultimo >= tamanho)
+  {
+    tamanho+= 10;
+    comandosAExecutar = realloc (comandosAExecutar, tamanho * sizeof(char*));
+  }
+  
+  comandosAExecutar[ultimo++] = comando;
+}
+
 void separa_pipe(char* linha_comando)
 {
   char *p;
@@ -94,11 +110,11 @@ void separa_pipe(char* linha_comando)
   
   while (p)
   {
-    p = malloc(sizeof(char)); //aloca posição de memoria pra fazer um vetor de comandos
-    i++;
+    inserir(p);
     p = strtok(NULL, "|");
-
   }
+
+  pipe_simples(comandosAExecutar);
 }
 
 void separa_maior(char* linha_comando)
@@ -172,7 +188,7 @@ void redirecionamento_menor(char* entrada)
 
 /*              PIPES              */
 
-void pipe_simples(char* comandos)
+void pipe_simples(char** comandos)
 {
   int pipe_a[2], status_a, status_b;
   pipe(pipe_a);
@@ -187,6 +203,9 @@ void pipe_simples(char* comandos)
     /*    Filho A     */
     // comandos[0]
     dup2(pipe_a[WRITE], STDOUT_FILENO);
+    
+    // dup2(pipe_a[READ], STDIN_FILENO);
+    
     close(pipe_a[WRITE]);
     close(pipe_a[READ]);
 
@@ -197,7 +216,10 @@ void pipe_simples(char* comandos)
   {
     /* Filho B */
     //comandos[1]
+    
+    dup2(pipe_a[WRITE], STDOUT_FILENO);
     dup2(pipe_a[READ], STDIN_FILENO);
+
     close(pipe_a[WRITE]);
     close(pipe_a[READ]);
 

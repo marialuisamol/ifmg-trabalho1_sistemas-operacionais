@@ -10,7 +10,7 @@ int main(int argc, char const *argv[])
     {
         printf("$");
         linha_cmd = getln();
-        
+        inicializar();
         separa_pipe(linha_cmd);
         
 
