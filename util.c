@@ -5,8 +5,8 @@
 #include <sys/wait.h>
 #include <string.h>
 
-#define READ 1
-#define WRITE 0
+#define READ 0
+#define WRITE 1
 
 #define CHUNK sizeof(char)
 
@@ -14,7 +14,6 @@ void executa(char *comando)
 {
     //SPLIT NO ESPAÇO
     char *args[64];
-    const char arg = args;
     char **prox = args;
 
     char *temp = strtok(comando, " ");
@@ -27,8 +26,7 @@ void executa(char *comando)
     *prox = NULL;
     
     //EXECUTA
-    execvp(args[0], arg);
-    printf("\n%s\n", args);
+    execvp(args[0], args);
 }
 
 char *getln()
@@ -67,20 +65,31 @@ void cria_fork(char *comando)
 {
 
   pid_t res;
+  int status;
 
   res = fork();
 
   if (res == 0)
   {
-    //Filho 
-    
-    executa(comando);
+    //Filho
+    if (strstr(comando, ">") != NULL)
+    {
+      separa_maior(comando);
+    }
+    else if (strstr(comando, "<") != NULL)
+    {
+      separa_menor(comando);
+    }
+    else
+    {
+      executa(comando);
+    }
     
   }
   else if (res > 0)
   {
     //Pai
-    wait(NULL);
+    waitpid(res, status, 0);
   }
    
 }
@@ -108,12 +117,12 @@ void separa_pipe(char* linha_comando)
   int i = 0;
 
   p = strtok(linha_comando, "|");
-
   
   while (p)
   {
-    inserir(p);
+    inserir(p);    
     p = strtok(NULL, "|");
+    
   }
 
   pipe_simples(comandosAExecutar);
@@ -121,17 +130,15 @@ void separa_pipe(char* linha_comando)
 
 void separa_maior(char* linha_comando)
 {
-  char *p;
-
+  char *p, **comandos = malloc(2 * sizeof(char*));
   p = strtok(linha_comando, ">");
-
   
-  while (p)
-  {
-    p = malloc(sizeof(char)); //aloca posição de memoria pra fazer um vetor de comandos
-    p = strtok(NULL, ">");
+  comandos[0] = p;
+  p = strtok(NULL, ">");
+  comandos[1] = p;
+  printf("0: %s\t 1: %s\n", comandos[0],comandos[1]);
 
-  }
+  redirecionamento_maior(comandos);
 }
 
 void separa_menor(char* linha_comando)
@@ -150,41 +157,24 @@ void separa_menor(char* linha_comando)
 }
 
 /*        REDIRECIONADORES        */
-void redirecionamento_maior(char* saida)
-{
-  pid_t res = fork();
 
-  if (res == 0)
-  {
-    /*Filho*/
-    FILE* fd = fopen(saida, "rw");
-    dup2(fd, STDOUT_FILENO);
-  }
-  else if(res > 0)
-  {
-    /*Pai*/
-    wait(NULL);
-  }
-  
+void redirecionamento_maior(char** comandos)
+{
+  /*Filho*/
+  FILE* fd = fopen(comandos[1], "rw");
+  dup2(fd, STDOUT_FILENO);
+
+  executa(comandos[0]);
 }
 
-void redirecionamento_menor(char* entrada)
+void redirecionamento_menor(char** comandos)
 {
-  pid_t res = fork();
+  /*Filho*/
+  FILE* fd = fopen(comandos[1], "r");
+  dup2(fd, STDIN_FILENO);
 
-  if (res == 0)
-  {
-    /*Filho*/
-    FILE* fd = fopen(entrada, "r");
-    dup2(fd, STDIN_FILENO);
-  }
-   else if(res > 0)
-  {
-    /*Pai*/
-    wait(NULL);
-  }
-  
-  
+  executa(comandos[0]);
+
 }
   
 
@@ -196,7 +186,6 @@ void pipe_simples(char** comandos)
   pipe(pipe_a);
 
   pid_t res;
-
   res = fork();
   
 
@@ -204,13 +193,24 @@ void pipe_simples(char** comandos)
   {
     /*    Filho A     */
     // comandos[0]
-    printf("\nFILHO A\n");
+    
     dup2(pipe_a[WRITE], STDOUT_FILENO);
     
     close(pipe_a[READ]);
     close(pipe_a[WRITE]);
 
-    executa(comandos[0]);
+    if (strstr(comandos[0], ">") != NULL)
+    {
+      separa_maior(comandos[0]);
+    }
+    else if (strstr(comandos[0], "<") != NULL)
+    {
+      separa_menor(comandos[0]);
+    }
+    else
+    {
+      executa(comandos[0]);
+    }
 
     printf("\n$ Falha ao executar %s", comandos[0]);
     exit(1);
@@ -224,14 +224,24 @@ void pipe_simples(char** comandos)
     {
       /* Filho B */
       //comandos[1]
-      printf("\nFILHO B\n");
+
       dup2(pipe_a[READ], STDIN_FILENO);
 
       close(pipe_a[WRITE]);
       close(pipe_a[READ]);
-
-      executa(comandos[1]);
-      printf("\n$ Falha ao executar %s", comandos[1]);
+      if (strstr(comandos[1], ">") != NULL)
+      {
+        separa_maior(comandos[1]);
+      }
+      else if (strstr(comandos[1], "<") != NULL)
+      {
+        separa_menor(comandos[1]);
+      }
+      else
+      {
+        executa(comandos[1]);
+      }
+        printf("\n$ Falha ao executar %s", comandos[1]);
       exit(1);
     }
 

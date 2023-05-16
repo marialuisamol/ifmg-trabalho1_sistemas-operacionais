@@ -11,7 +11,15 @@ int main(int argc, char const *argv[])
         printf("$");
         linha_cmd = getln();
         inicializar();
-        separa_pipe(linha_cmd);
+        if (strstr(linha_cmd, "|") != NULL)
+        {
+            separa_pipe(linha_cmd);   
+        }
+        else
+        {
+            cria_fork(linha_cmd);
+        }
+        
         
 
     } while (strcmp(linha_cmd, "exit") != 0);

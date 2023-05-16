@@ -8,9 +8,10 @@ void separa_pipe(char* linha_comando);
 void separa_maior(char* linha_comando);
 void separa_menor(char* linha_comando);
 char* getln();
-void pipe_simples(char *comandos);
+void pipe_simples(char **comandos);
 void inicializar();
+void inserir(char* comando);
 //void pipe_rec(char* comando);
-//void redirecionamento_maior(char* saida);
-//void redirecionamento_menor(char* entrada);
+void redirecionamento_maior(char** comandos);
+void redirecionamento_menor(char** comandos);
 #endif
