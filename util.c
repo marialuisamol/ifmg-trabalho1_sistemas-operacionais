@@ -65,8 +65,8 @@ void cria_fork(char *comando)
 {
 
   pid_t res;
-  int status;
-
+  int status, fd1[2];
+  pipe(fd1);
   res = fork();
 
   if (res == 0)
@@ -74,7 +74,7 @@ void cria_fork(char *comando)
     //Filho
     if (strstr(comando, ">") != NULL)
     {
-      separa_maior(comando);
+      separa_maior(comando, fd1);
     }
     else if (strstr(comando, "<") != NULL)
     {
@@ -128,7 +128,7 @@ void separa_pipe(char* linha_comando)
   pipe_simples(comandosAExecutar);
 }
 
-void separa_maior(char* linha_comando)
+void separa_maior(char* linha_comando, int* fd1)
 {
   char *p, **comandos = malloc(2 * sizeof(char*));
   p = strtok(linha_comando, ">");
@@ -138,7 +138,7 @@ void separa_maior(char* linha_comando)
   comandos[1] = p;
   printf("0: %s\t 1: %s\n", comandos[0],comandos[1]);
 
-  redirecionamento_maior(comandos);
+  redirecionamento_maior(comandos, fd1);
 }
 
 void separa_menor(char* linha_comando)
@@ -158,13 +158,21 @@ void separa_menor(char* linha_comando)
 
 /*        REDIRECIONADORES        */
 
-void redirecionamento_maior(char** comandos)
+void redirecionamento_maior(char** comandos, int* fd1)
 {
   /*Filho*/
-  FILE* fd = fopen(comandos[1], "rw");
+  FILE* fd = fopen(comandos[1], "w");
+  
+  dup2(fd1[READ], STDIN_FILENO);
+
+  close(fd1[WRITE]);
+  close(fd1[READ]);
+
   dup2(fd, STDOUT_FILENO);
 
   executa(comandos[0]);
+  
+  close(fd);
 }
 
 void redirecionamento_menor(char** comandos)
@@ -182,9 +190,9 @@ void redirecionamento_menor(char** comandos)
 
 void pipe_simples(char** comandos)
 {
-  int pipe_a[2], status;
+  int pipe_a[2], status, fd1[2];
   pipe(pipe_a);
-
+  pipe(fd1);
   pid_t res;
   res = fork();
   
@@ -194,14 +202,14 @@ void pipe_simples(char** comandos)
     /*    Filho A     */
     // comandos[0]
     
-    dup2(pipe_a[WRITE], STDOUT_FILENO);
+    dup2(pipe_a[WRITE], STDOUT_FILENO); // EScreve a saída
     
     close(pipe_a[READ]);
     close(pipe_a[WRITE]);
 
     if (strstr(comandos[0], ">") != NULL)
     {
-      separa_maior(comandos[0]);
+      separa_maior(comandos[0], fd1);
     }
     else if (strstr(comandos[0], "<") != NULL)
     {
@@ -225,13 +233,13 @@ void pipe_simples(char** comandos)
       /* Filho B */
       //comandos[1]
 
-      dup2(pipe_a[READ], STDIN_FILENO);
+      dup2(pipe_a[READ], STDIN_FILENO); // lê a entrada
 
       close(pipe_a[WRITE]);
       close(pipe_a[READ]);
       if (strstr(comandos[1], ">") != NULL)
       {
-        separa_maior(comandos[1]);
+        separa_maior(comandos[1], fd1);
       }
       else if (strstr(comandos[1], "<") != NULL)
       {
