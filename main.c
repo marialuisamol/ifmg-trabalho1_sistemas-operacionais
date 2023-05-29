@@ -5,8 +5,8 @@
 
 int main(int argc, char const *argv[])
 {
-    char *linha_cmd;
-    do
+    char *linha_cmd = " ";
+    while (strcmp(linha_cmd, "exit") != 0)
     {
         printf("$");
         linha_cmd = getln();
@@ -22,7 +22,7 @@ int main(int argc, char const *argv[])
         
         
 
-    } while (strcmp(linha_cmd, "exit") != 0);
+    }
     
     return 0;
 }

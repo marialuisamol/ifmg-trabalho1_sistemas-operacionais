@@ -12,6 +12,6 @@ void pipe_simples(char **comandos);
 void inicializar();
 void inserir(char* comando);
 //void pipe_rec(char* comando);
-void redirecionamento_maior(char** comandos);
-void redirecionamento_menor(char** comandos);
+void redirecionamento_maior(char** comandos, int* fd1);
+void redirecionamento_menor(char** comandos, int* fd1);
 #endif

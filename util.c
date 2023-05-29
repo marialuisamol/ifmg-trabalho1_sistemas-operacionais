@@ -78,7 +78,7 @@ void cria_fork(char *comando)
     }
     else if (strstr(comando, "<") != NULL)
     {
-      separa_menor(comando);
+      separa_menor(comando, fd1);
     }
     else
     {
@@ -90,6 +90,7 @@ void cria_fork(char *comando)
   {
     //Pai
     waitpid(res, status, 0);
+    close;
   }
    
 }
@@ -141,19 +142,18 @@ void separa_maior(char* linha_comando, int* fd1)
   redirecionamento_maior(comandos, fd1);
 }
 
-void separa_menor(char* linha_comando)
+void separa_menor(char* linha_comando, int* fd1)
 {
-  char *p;
+  char *p, **comandos = malloc(2 * sizeof(char*));
 
   p = strtok(linha_comando, "<");
 
-  
-  while (p)
-  {
-    p = malloc(sizeof(char)); //aloca posição de memoria pra fazer um vetor de comandos
-    p = strtok(NULL, "<");
+  comandos[0] = p;
+  p = strtok(NULL, "<");
+  comandos[1] = p;
+  printf("0: %s\t 1: %s\n", comandos[0],comandos[1]);
 
-  }
+  redirecionamento_maior(comandos, fd1);
 }
 
 /*        REDIRECIONADORES        */
@@ -161,28 +161,33 @@ void separa_menor(char* linha_comando)
 void redirecionamento_maior(char** comandos, int* fd1)
 {
   /*Filho*/
-  FILE* fd = fopen(comandos[1], "w");
+  FILE* file = fopen(comandos[1], "w");
+  int fd = fileno(file);
   
   dup2(fd1[READ], STDIN_FILENO);
+  dup2(fd, STDOUT_FILENO);
 
   close(fd1[WRITE]);
   close(fd1[READ]);
-
-  dup2(fd, STDOUT_FILENO);
+  fclose(file);
 
   executa(comandos[0]);
-  
-  close(fd);
 }
 
-void redirecionamento_menor(char** comandos)
+void redirecionamento_menor(char** comandos, int* fd1)
 {
   /*Filho*/
-  FILE* fd = fopen(comandos[1], "r");
+  FILE* file = fopen(comandos[1], "r");
+  int fd = fileno(file);
+
+  dup2(fd1[READ], STDIN_FILENO);
   dup2(fd, STDIN_FILENO);
+  
+  close(fd1[WRITE]);
+  close(fd1[READ]);
+  fclose(file);
 
   executa(comandos[0]);
-
 }
   
 
@@ -213,7 +218,7 @@ void pipe_simples(char** comandos)
     }
     else if (strstr(comandos[0], "<") != NULL)
     {
-      separa_menor(comandos[0]);
+      separa_menor(comandos[0], fd1);
     }
     else
     {
@@ -243,7 +248,7 @@ void pipe_simples(char** comandos)
       }
       else if (strstr(comandos[1], "<") != NULL)
       {
-        separa_menor(comandos[1]);
+        separa_menor(comandos[1], fd1);
       }
       else
       {
