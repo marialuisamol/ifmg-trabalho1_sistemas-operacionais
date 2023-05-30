@@ -126,7 +126,8 @@ void separa_pipe(char* linha_comando)
     
   }
 
-  pipe_simples(comandosAExecutar);
+  pipe_complexo(comandosAExecutar);
+  //pipe_simples(comandosAExecutar);
 }
 
 void separa_maior(char* linha_comando, int* fd1)
@@ -153,7 +154,7 @@ void separa_menor(char* linha_comando, int* fd1)
   comandos[1] = p;
   printf("0: %s\t 1: %s\n", comandos[0],comandos[1]);
 
-  redirecionamento_maior(comandos, fd1);
+  redirecionamento_menor(comandos, fd1);
 }
 
 /*        REDIRECIONADORES        */
@@ -195,8 +196,13 @@ void redirecionamento_menor(char** comandos, int* fd1)
 
 void pipe_simples(char** comandos)
 {
-  int pipe_a[2], status, fd1[2];
-  pipe(pipe_a);
+  int pipe_a[ultimo - 1][2], status, fd1[2];
+
+  for (int i = 0; i < ultimo -1; i++)
+  {
+    pipe(pipe_a[i]);
+  }
+  
   pipe(fd1);
   pid_t res;
   res = fork();
@@ -271,5 +277,102 @@ void pipe_simples(char** comandos)
   {
     return;
   }
+  close;//fecha pai
 }
 
+void pipe_complexo(char **comandos) {
+  int pipe_a[ultimo-1][2], status, fd1[2];
+
+  for(int j = 0; j < ultimo - 1; j++){
+    pipe(pipe_a[j]);
+  }
+
+  pipe(fd1);
+  pid_t res[ultimo-1];
+
+  //cria forks
+  for(int j = 0; j < ultimo - 1; j++){
+    res[j] = fork();
+  }
+
+  if(res[0] == 0){
+    //FILHO    
+    dup2(pipe_a[0][WRITE], STDOUT_FILENO);
+    close(pipe_a[0][READ]);
+    close(pipe_a[0][WRITE]);
+
+    if (strstr(comandos[0], ">") != NULL)
+    {
+      separa_maior(comandos[0], fd1);
+    }
+    else if (strstr(comandos[0], "<") != NULL)
+    {
+      separa_menor(comandos[0], fd1);
+    }
+    else
+    {
+      executa(comandos[0]);
+    }
+
+    printf("\n$ Falha ao executar %s", comandos[0]);
+    exit(1);
+  }
+  
+  for(int i = 1; i < ultimo-1; i++){
+    if(res[i] == 0){
+      //FILHO[1]
+      dup2(pipe_a[i - 1][READ], STDIN_FILENO); 
+      close(pipe_a[i - 1][READ]);
+      close(pipe_a[i - 1][WRITE]);
+    }
+    else if(res[i+1] == 0){
+      dup2(pipe_a[i][WRITE], STDOUT_FILENO); 
+      close(pipe_a[i][READ]);
+      close(pipe_a[i][WRITE]);
+    }
+
+    if (strstr(comandos[i], ">") != NULL)
+    {
+      separa_maior(comandos[i], fd1);
+    }
+    else if (strstr(comandos[i], "<") != NULL)
+    {
+      separa_menor(comandos[i], fd1);
+    }
+    else
+    {
+      executa(comandos[i]);
+    }
+
+    printf("\n$ Falha ao executar %s", comandos[i]);
+    exit(1);
+  }
+  
+  //ULTIMO COMANDO
+   if(res[ultimo - 1] == 0){
+    //FILHO    
+    dup2(pipe_a[ultimo-2][READ], STDIN_FILENO);
+    close(pipe_a[ultimo-2][READ]);
+    close(pipe_a[ultimo-2][WRITE]);
+
+    if (strstr(comandos[ultimo-1], ">") != NULL)
+    {
+      separa_maior(comandos[ultimo-1], fd1);
+    }
+    else if (strstr(comandos[ultimo-1], "<") != NULL)
+    {
+      separa_menor(comandos[ultimo-1], fd1);
+    }
+    else
+    {
+      executa(comandos[ultimo-1]);
+    }
+
+    printf("\n$ Falha ao executar %s", comandos[ultimo-1]);
+    exit(1);
+  }
+
+  else if (res[ultimo-1] > 0){
+    waitpid(res[ultimo-1], &status, 0);
+  }
+}
