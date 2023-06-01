@@ -131,14 +131,19 @@ void separa_pipe(char* linha_comando)
 }
 
 void separa_maior(char* linha_comando, int* fd1)
-{
+{ 
   char *p, **comandos = malloc(2 * sizeof(char*));
   p = strtok(linha_comando, ">");
   
   comandos[0] = p;
   p = strtok(NULL, ">");
   comandos[1] = p;
-  printf("0: %s\t 1: %s\n", comandos[0],comandos[1]);
+  //printf("0: %s\t 1: %s\n", comandos[0],comandos[1]);
+
+  if (strstr(comandos, "<") != NULL)
+  {
+    separa_menor(comandos, fd1);
+  }
 
   redirecionamento_maior(comandos, fd1);
 }
@@ -153,6 +158,11 @@ void separa_menor(char* linha_comando, int* fd1)
   p = strtok(NULL, "<");
   comandos[1] = p;
   printf("0: %s\t 1: %s\n", comandos[0],comandos[1]);
+
+  if (strstr(comandos, ">") != NULL)
+  {
+    separa_maior(comandos, fd1);
+  }
 
   redirecionamento_menor(comandos, fd1);
 }
@@ -199,75 +209,64 @@ void pipe_complexo(char **comandos) {
   int pipe_a[ultimo - 1][2], status, fd1[2];
 
   for(int i = 0; i < ultimo - 1; i++){
-    pipe(pipe_a[i]);
+    //cria a quantidade de pipes necessarios
+    if (pipe(pipe_a[i]) == -1) {//realiza a criação do pipe
+        perror("Falha na realização do pipe");
+        exit(1);
+    }
   }
 
-  pid_t res[ultimo];
-  res[0] = fork();
-
-  if (res[0] == 0) { // filho
-    // executar o primeiro comando
-    dup2(pipe_a[0][WRITE], STDOUT_FILENO);
-    close(pipe_a[0][READ]);
-    close(pipe_a[0][WRITE]);
-
     // executar os comandos abaixo
-    for (int i = 1; i < ultimo - 1; i++) {
-        if (res[i-1] == 0) {
-            res[i] = fork();
-            
-            if (res[i] == 0) { // filho
-                dup2(pipe_a[i-1][READ], STDIN_FILENO); 
-                dup2(pipe_a[i][WRITE], STDOUT_FILENO);
-                close(pipe_a[i][READ]);
-                close(pipe_a[i][WRITE]);
+    for (int i = 0; i < ultimo; i++) {
+      pid_t res = fork();
+      
+      if (res < 0)
+      {
+        /* ERRO*/
+        fprintf(stderr, "Falha na realizacao do fork()\n");
+      }
+      
+      else if (res == 0) { //FILHO
 
-                // executa comando...
-                if (strstr(comandos[i], ">") != NULL)
-                {
-                  separa_maior(comandos[i], fd1);
-                }
-                else if (strstr(comandos[i], "<") != NULL)
-                {
-                  separa_menor(comandos[i], fd1);
-                }
-                else
-                {
-                  executa(comandos[i]);
-                }
+      if (i == ultimo - 1)
+      {
+        /* Último comando */
+        dup2(pipe_a[i - 1][READ], STDIN_FILENO);
+      }
+      
+      else if(i == 0){
+        /* Primeiro comando*/
+        dup2(pipe_a[i][WRITE], STDOUT_FILENO);
+      }     
+      
+      else if (i > 0 && i < ultimo - 1)
+      {
+        /* Comandos do meio */
+        dup2(pipe_a[i - 1][READ], STDIN_FILENO);
+        dup2(pipe_a[i][WRITE], STDOUT_FILENO);
+      }
+      
+
+      // executa comando...
+      if (strstr(comandos[i], ">") != NULL)
+      {
+        separa_maior(comandos[i], fd1);
+      }
+      else if (strstr(comandos[i], "<") != NULL)
+      {
+        separa_menor(comandos[i], fd1);
+      }
+      else
+      {
+        executa(comandos[i]);
+      }
     
-            } else if (res > 0) { // pai
-                close(pipe_a[i][READ]);
-                close(pipe_a[i][WRITE]);
-                waitpid(res[i], &status, 0);
-            }
+      } 
+      else if (res > 0) { // pai
+        if(i < ultimo - 1){
+          close(pipe_a[i][WRITE]);
         }
-    }
-
-    if (res[ultimo-1] == 0) {
-        dup2(pipe_a[ultimo - 2][WRITE], STDOUT_FILENO);
-        close(pipe_a[ultimo - 2][READ]);
-        close(pipe_a[ultimo - 2][WRITE]);
-
-        if (strstr(comandos[ultimo - 1], ">") != NULL)
-        {
-          separa_maior(comandos[ultimo - 1], fd1);
-        }
-        else if (strstr(comandos[ultimo - 1], "<") != NULL)
-        {
-          separa_menor(comandos[ultimo - 1], fd1);
-        }
-        else
-        {
-          executa(comandos[ultimo - 1]);
-        }
-    }
-    else if (res[ultimo - 1] > 0){
-        close(pipe_a[ultimo - 2][READ]);
-        close(pipe_a[ultimo - 2][WRITE]);
-        
-        waitpid(res[ultimo - 1], &status, 0);
-
+        waitpid(res, &status, 0);
     }
   }
 }
