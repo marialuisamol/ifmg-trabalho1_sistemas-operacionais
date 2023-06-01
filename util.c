@@ -127,7 +127,7 @@ void separa_pipe(char* linha_comando)
   }
 
   pipe_complexo(comandosAExecutar);
-  //pipe_simples(comandosAExecutar);
+  
 }
 
 void separa_maior(char* linha_comando, int* fd1)
@@ -137,13 +137,14 @@ void separa_maior(char* linha_comando, int* fd1)
   
   comandos[0] = p;
   p = strtok(NULL, ">");
-  comandos[1] = p;
-  //printf("0: %s\t 1: %s\n", comandos[0],comandos[1]);
 
   if (strstr(comandos, "<") != NULL)
   {
     separa_menor(comandos, fd1);
   }
+
+  comandos[1] = p;
+  //printf("0: %s\t 1: %s\n", comandos[0],comandos[1]);
 
   redirecionamento_maior(comandos, fd1);
 }
@@ -156,13 +157,14 @@ void separa_menor(char* linha_comando, int* fd1)
 
   comandos[0] = p;
   p = strtok(NULL, "<");
-  comandos[1] = p;
-  printf("0: %s\t 1: %s\n", comandos[0],comandos[1]);
 
   if (strstr(comandos, ">") != NULL)
   {
     separa_maior(comandos, fd1);
   }
+
+  comandos[1] = p;
+  //printf("0: %s\t 1: %s\n", comandos[0],comandos[1]);
 
   redirecionamento_menor(comandos, fd1);
 }

@@ -13,4 +13,5 @@ void inserir(char* comando);
 void pipe_complexo(char **comandos);
 void redirecionamento_maior(char** comandos, int* fd1);
 void redirecionamento_menor(char** comandos, int* fd1);
+void verifica_redirecionadores(char* linha_comando);
 #endif
